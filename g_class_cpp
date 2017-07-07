@@ -1,0 +1,30 @@
+#!/bin/bash
+
+class=$1
+
+hdr="$class.hpp"
+src="$class.cpp"
+
+header="// \
+//
+//
+//
+//
+//
+//"
+
+printf $header
+
+
+
+
+
+
+
+
+
+
+
+
+
+
