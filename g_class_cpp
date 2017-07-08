@@ -4,16 +4,22 @@ class=$1
 
 hdr="$class.hpp"
 src="$class.cpp"
+tmp_src="$src                                                      "
+comment_source_name=${tmp_src:0:20}
+dateandtimeandstuffofthings=$(date)
 
-header="// \
-//
-//
-//
-//
-//
-//"
-
-printf $header
+cat << EOF
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+**                                                                                              **
+**          oliver belanger - obelange                                                          **
+**          $comment_source_name                                                                **
+**                                                                                              **
+**                                                                                              **
+**          $dateandtimeandstuffofthings                                                        **
+**                                                                                              **
+**                                                                                              **
+** * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * /
+EOF
 
 
 
