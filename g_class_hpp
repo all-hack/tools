@@ -5,11 +5,11 @@ class=$1
 
 hdr="$class.hpp"
 src="$class.cpp"
-tmp_src="$src                                                      "
+tmp_src="$hdr                                                      "
 comment_source_name=${tmp_src:0:20}
 dateandtimeandstuffofthings=$(date)
 
-cat > $src << EOF
+cat > $hdr << EOF
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * **
 **                                                                                             **
 **          oliver belanger - obelange                                                         **
@@ -23,9 +23,30 @@ cat > $src << EOF
 
 EOF
 
-echo "#include \"$hdr\"" >> $src
-
-# hpp_text=$(cat "$hdr")
+echo "#include <iostream>" >> $hdr
+echo "" >> $hdr
+hh="_H"
+printf "#ifndef " >> $hdr
+echo "$class$hh" | awk '{print toupper($0)}' >> $hdr
+printf "# define " >> $hdr
+echo "$class$hh" | awk '{print toupper($0)}' >> $hdr
+echo "" >> $hdr
+echo "class $class" >> $hdr
+echo "{" >> $hdr
+echo "" >> $hdr
+echo "public:" >> $hdr
+echo "    $class(void);" >> $hdr
+echo "    $class(void);" >> $hdr
+echo "    $class(const $class& cp);" >> $hdr
+echo "    ~$class(void);" >> $hdr
+echo "" >> $hdr
+echo "    $class&   operator=(const $class& rhs);" >> $hdr
+echo "" >> $hdr
+echo "private:" >> $hdr
+echo "" >> $hdr
+echo "};" >> $hdr
+echo "" >> $hdr
+echo "#endif" >> $hdr
 
 
 

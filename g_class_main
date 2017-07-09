@@ -1,15 +1,11 @@
 #!/bin/bash
 
-class=$1
-# class="FragTrap"
-
-hdr="$class.hpp"
-src="$class.cpp"
-tmp_src="$src                                                      "
+mm="main.cpp"
+tmp_src="$mm                                                      "
 comment_source_name=${tmp_src:0:20}
 dateandtimeandstuffofthings=$(date)
 
-cat > $src << EOF
+cat > $mm << EOF
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * **
 **                                                                                             **
 **          oliver belanger - obelange                                                         **
@@ -23,22 +19,9 @@ cat > $src << EOF
 
 EOF
 
-echo "#include \"$hdr\"" >> $src
-
-# hpp_text=$(cat "$hdr")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+echo "#include <iostream>" >> $mm
+echo "" >> $mm
+echo "int       main(void)" >> $mm
+echo "{" >> $mm
+echo "    return 0;" >> $mm
+echo "}" >> $mm
