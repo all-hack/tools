@@ -1,0 +1,92 @@
+#!/usr/bin/env python
+import sys
+import datetime
+import glob
+
+src="Makefile"
+tmp_src = src+"                                                      "
+comment_source_nam = tmp_src[:20]
+dateandtimeandstuffofthing=str(datetime.datetime.now())
+
+
+hdrs = glob.glob("*.hpp")
+files = []
+
+for x in hdrs:
+	files.append(x.split('.')[0])
+
+files = " ".join(files)
+
+makefile = """\
+## * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * ##
+##                                                                                             ##
+##          oliver belanger - obelange                                                         ##
+##          {000000000000000000}                                                               ##
+##                                                                                             ##
+##                                                                                             ##
+##          {000000000000000000000001}                                                         ##
+##                                                                                             ##
+##                                                                                             ##
+## * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * ##
+
+NAME = start
+
+B_PATH = build/
+
+FILES = {02}
+
+FILES +=  main
+
+OBJ = $(addprefix $(B_PATH), $(addsuffix .o, $(FILES)))
+
+FLAGS 	= -Wall -Werror -Wextra
+CPPCOMP = $(FLAGS) -std=c++98
+DEVF 	= $(FLAGS) -fsanitize=address
+
+.PHONY: all fclean clean run leak
+
+all : $(NAME)
+
+$(NAME) : $(B_PATH) $(OBJ)
+	@echo ""
+	@printf "\\x1b[36m \\ncompiling program.....\\n\\x1b[33m"
+	g++ $(FLAGS) -o $(NAME) $(OBJ)
+	@echo "\\x1b[37m"
+
+run : fclean $(B_PATH) $(OBJ)
+	@echo "\\x1b[31mrun is turned on\\x1b[36m"
+	g++ -o $(NAME) $(OBJ) && printf "\\x1b[37m" && ./$(NAME)
+
+dev : fclean $(B_PATH) $(OBJ)
+	g++ $(DEVF) -o $(NAME) $(OBJ)
+
+$(B_PATH) :
+	@printf "\\x1b[32m \\nbuilding objects.....\\n\\x1b[33m"
+	@mkdir build
+
+$(B_PATH)%.o : %.cpp
+	g++ $(CPPCOMP) -c $< -o $@
+
+# $(B_PATH)%.o : %.cpp
+# g++ -c $< -o $@
+
+clean : 
+	@rm -rf build
+
+fclean : clean
+	@rm -f $(NAME)
+
+re : fclean all
+
+""".format(comment_source_nam, dateandtimeandstuffofthing, files)
+
+wr = []
+wr.append(makefile)
+
+f = open(src, "w")
+
+for x in wr:
+	f.write(x)
+
+f.close()
+

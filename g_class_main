@@ -1,27 +1,55 @@
-#!/bin/bash
+#!/usr/bin/env python
+import sys
+import datetime
+import glob
+
+
 
 mm="main.cpp"
-tmp_src="$mm                                                      "
-comment_source_name=${tmp_src:0:20}
-dateandtimeandstuffofthings=$(date)
+tmp_src = mm+"                                                      "
+comment_source_nam = tmp_src[:20]
+dateandtimeandstuffofthing=str(datetime.datetime.now())
 
-cat > $mm << EOF
+header = """\
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * **
 **                                                                                             **
 **          oliver belanger - obelange                                                         **
-**          $comment_source_name                                                               **
+**          {000000000000000000}                                                               **
 **                                                                                             **
 **                                                                                             **
-**          $dateandtimeandstuffofthings                                                       **
+**          {000000000000000000000001}                                                         **
 **                                                                                             **
 **                                                                                             **
 ** * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-EOF
+""".format(comment_source_nam, dateandtimeandstuffofthing)
 
-echo "#include <iostream>" >> $mm
-echo "" >> $mm
-echo "int       main(void)" >> $mm
-echo "{" >> $mm
-echo "    return 0;" >> $mm
-echo "}" >> $mm
+wr = []
+wr.append(header)
+wr.append("#include <iostream>\n\n")
+
+hdrs = glob.glob("*.hpp")
+
+for x in hdrs:
+	wr.append("#include \"{0}\"\n".format(x))
+
+wr.append("""
+int		main(void)
+{
+	return 0;
+}
+""");
+
+
+# echo "" >> $mm
+# echo "int       main(void)" >> $mm
+# echo "{" >> $mm
+# echo "    return 0;" >> $mm
+# echo "}" >> $mm
+
+f = open(mm, "w")
+
+for x in wr:
+	f.write(x)
+
+f.close()

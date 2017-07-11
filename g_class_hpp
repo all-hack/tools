@@ -1,57 +1,61 @@
-#!/bin/bash
+#!/usr/bin/env python
+import sys
+import datetime
 
-class=$1
-# class="FragTrap"
 
-hdr="$class.hpp"
-src="$class.cpp"
-tmp_src="$hdr                                                      "
-comment_source_name=${tmp_src:0:20}
-dateandtimeandstuffofthings=$(date)
+if len(sys.argv) > 1:
+	nclass = sys.argv[1]
+else:
+	nclass = ""
 
-cat > $hdr << EOF
+hdr = nclass+".hpp"
+src = nclass+".cpp"
+tmp_src = hdr+"                                                      "
+comment_source_nam = tmp_src[:20]
+dateandtimeandstuffofthing=str(datetime.datetime.now())
+
+header = """\
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * **
 **                                                                                             **
 **          oliver belanger - obelange                                                         **
-**          $comment_source_name                                                               **
+**          {000000000000000000}                                                               **
 **                                                                                             **
 **                                                                                             **
-**          $dateandtimeandstuffofthings                                                       **
+**          {000000000000000000000001}                                                         **
 **                                                                                             **
 **                                                                                             **
 ** * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-EOF
+""".format(comment_source_nam, dateandtimeandstuffofthing)
 
-echo "#include <iostream>" >> $hdr
-echo "" >> $hdr
-hh="_H"
-printf "#ifndef " >> $hdr
-echo "$class$hh" | awk '{print toupper($0)}' >> $hdr
-printf "# define " >> $hdr
-echo "$class$hh" | awk '{print toupper($0)}' >> $hdr
-echo "" >> $hdr
-echo "class $class" >> $hdr
-echo "{" >> $hdr
-echo "" >> $hdr
-echo "public:" >> $hdr
-echo "    $class(void);" >> $hdr
-echo "    $class(void);" >> $hdr
-echo "    $class(const $class& cp);" >> $hdr
-echo "    ~$class(void);" >> $hdr
-echo "" >> $hdr
-echo "    $class&   operator=(const $class& rhs);" >> $hdr
-echo "" >> $hdr
-echo "private:" >> $hdr
-echo "" >> $hdr
-echo "};" >> $hdr
-echo "" >> $hdr
-echo "#endif" >> $hdr
+wr = []
+wr.append(header)
+
+wr.append("#include <iostream>\n\n")
+
+wr.append("#ifndef {0}_H\n".format(nclass.upper()))
+wr.append("# define {0}_H\n\n".format(nclass.upper()))
+wr.append("class {0}\n".format(nclass))
+wr.append("{\n")
+wr.append("public:\n")
+wr.append("\t{0}(void);\n".format(nclass))
+wr.append("\t{0}(void);\n".format(nclass))
+wr.append("\t{0}(const {0}& rhs);\n".format(nclass))
+wr.append("\t~{0}(void);\n\n".format(nclass))
+wr.append("\t{0}&\toperator=(const {0}& rhs);\n\n".format(nclass))
+wr.append("private:\n\n".format(nclass))
 
 
+wr.append("}\n")
+wr.append("#endif\n")
 
 
+f = open(hdr, "w")
 
+for x in wr:
+	f.write(x)
+
+f.close()
 
 
 

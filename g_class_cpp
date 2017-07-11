@@ -1,32 +1,68 @@
-#!/bin/bash
+#!/usr/bin/env python
+import sys
+import datetime
 
-class=$1
-# class="FragTrap"
 
-hdr="$class.hpp"
-src="$class.cpp"
-tmp_src="$src                                                      "
-comment_source_name=${tmp_src:0:20}
-dateandtimeandstuffofthings=$(date)
+if len(sys.argv) > 1:
+	nclass = sys.argv[1]
+else:
+	nclass = ""
 
-cat > $src << EOF
+hdr = nclass+".hpp"
+src = nclass+".cpp"
+tmp_src = src+"                                                      "
+comment_source_nam = tmp_src[:20]
+dateandtimeandstuffofthing=str(datetime.datetime.now())
+
+header = """\
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * **
 **                                                                                             **
 **          oliver belanger - obelange                                                         **
-**          $comment_source_name                                                               **
+**          {000000000000000000}                                                               **
 **                                                                                             **
 **                                                                                             **
-**          $dateandtimeandstuffofthings                                                       **
+**          {000000000000000000000001}                                                         **
 **                                                                                             **
 **                                                                                             **
 ** * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-EOF
+""".format(comment_source_nam, dateandtimeandstuffofthing)
 
-echo "#include \"$hdr\"" >> $src
+wr = []
+wr.append(header)
 
-# hpp_text=$(cat "$hdr")
+wr.append("#include <iostream>\n\n")
 
+wr.append("#include \"{0}\"\n".format(hdr))
+
+hpp = open(hdr, "r")
+
+blob = hpp.read()
+
+twisform = {}
+
+for i, line in enumerate(blob.split('\n')):
+	if i < 10:
+		continue
+	print i, line
+
+
+
+
+
+
+
+
+hpp.close()
+
+
+
+# f = open(src, "w")
+
+# for x in wr:
+# 	f.write(x)
+
+# f.close()
 
 
 
