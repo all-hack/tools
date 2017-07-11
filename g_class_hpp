@@ -37,16 +37,15 @@ wr.append("#ifndef {0}_H\n".format(nclass.upper()))
 wr.append("# define {0}_H\n\n".format(nclass.upper()))
 wr.append("class {0}\n".format(nclass))
 wr.append("{\n")
+wr.append("private:\n\n".format(nclass))
 wr.append("public:\n")
 wr.append("\t{0}(void);\n".format(nclass))
 wr.append("\t{0}(void);\n".format(nclass))
 wr.append("\t{0}(const {0}& rhs);\n".format(nclass))
 wr.append("\t~{0}(void);\n\n".format(nclass))
 wr.append("\t{0}&\toperator=(const {0}& rhs);\n\n".format(nclass))
-wr.append("private:\n\n".format(nclass))
 
-
-wr.append("}\n")
+wr.append("};\n")
 wr.append("#endif\n")
 
 

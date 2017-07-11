@@ -41,28 +41,21 @@ blob = hpp.read()
 
 twisform = {}
 
-for i, line in enumerate(blob.split('\n')):
-	if i < 10:
-		continue
-	print i, line
+# for i, line in enumerate(blob.split('\n')):
+# 	if i < 10:
+# 		continue
+# 	print i, line
+
+# hpp.close()
 
 
 
+f = open(src, "w")
 
+for x in wr:
+	f.write(x)
 
-
-
-
-hpp.close()
-
-
-
-# f = open(src, "w")
-
-# for x in wr:
-# 	f.write(x)
-
-# f.close()
+f.close()
 
 
 
