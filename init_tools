@@ -26,3 +26,6 @@ if path_set == False:
 call(["chmod 700 g*"], shell=True)
 print "all generator files in tools dir have been set to executable"
 
+call(["source ~/.profile"], shell=True)
+print "~/.profile has been sourced."
+

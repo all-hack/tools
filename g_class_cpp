@@ -1,12 +1,19 @@
 #!/usr/bin/env python
 import sys
 import datetime
-
+import pprint
+import re
+pp = pprint.PrettyPrinter(indent=4)
 
 if len(sys.argv) > 1:
 	nclass = sys.argv[1]
 else:
-	nclass = ""
+	print "usage: must provide class to generate"
+	exit(0)
+
+if ".hpp" in nclass or ".cpp" in nclass:
+	print "usage: must provide class not a file to generate"
+	exit(0)	
 
 hdr = nclass+".hpp"
 src = nclass+".cpp"
@@ -28,26 +35,410 @@ header = """\
 
 """.format(comment_source_nam, dateandtimeandstuffofthing)
 
+#
+#	"scope":
+#	{
+#		"variables": 
+#		[
+#			{
+#				"qualifiers": "const",
+#				"type": "std::string",
+#				"label": "_name",
+#				"original": "const std::string	_name;"
+#			},
+#			{
+#				"qualifiers": "",
+#				"type": "int",
+#				"label": "_grade",
+#				"original": "int	_grade;"
+#			}
+#		]
+#		"functions": 
+#		[
+#			{
+#				"returnType": "",
+#				"label": "Bureaucrat",
+#				"parameters": [
+#									{
+#										"qualifiers": "const",
+#										"dataType": "std::string&",
+#										"label": "name",
+#										"original": "const std::string& name"
+#									},
+#									{
+#										"qualifiers": "const",
+#										"dataType": "int",
+#										"label": "grade",
+#										"original": "const int grade"
+#									}
+#								],
+#				"qualifiers": "",
+#				"signature": "Bureaucrat(const std::string& name, const int grade)"
+#				"original": "Bureaucrat(const std::string& name, const int grade);"
+#			},
+#			{
+#				"returnType": "Bureaucrat&",
+#				"label": "Bureaucrat",
+#				"parameters": 	[
+#									{
+#										"qualifiers": "const",
+#										"dataType": "Bureaucrat&",
+#										"label": "rhs",
+#										"original": "const Bureaucrat& rhs"
+#									}
+#								],
+#				"qualifiers": "",
+#				"signature": "operator=(const Bureaucrat& rhs)"
+#				"original": "Bureaucrat&			operator=(const Bureaucrat& rhs);"
+#			},
+#			{
+#				"returnType": "const std::string",
+#				"label": "getName",
+#				"parameters": [
+#									{
+#										"qualifiers": "",
+#										"dataType": "void",
+#										"label": "",
+#										"original": "void"
+#									}
+#								],
+#				"qualifiers": "const",
+#				"signature": "getName(void)",
+#				"original": "const std::string	getName(void) const;"
+#			}
+#		]
+#	}
+#	
+
+def detect_forward_decleration(line):
+	if line[:5] == "class" and line[-1] == ';':
+		return True
+	return False
+
+def detect_begClass(line):
+	if line[:5].strip() == "class":
+		return True
+	return False
+
+def detect_endClass(line):
+	if line.strip() == "};":
+		return True
+	return False
+
+# def detect_scope(line):	
+# 	if line.strip().split(":")[0] == "public":
+# 		return "public"
+# 	elif line.strip().split(":")[0] == "private":
+# 		return "private"
+# 	elif line.strip().split(":")[0] == "protected":
+# 		return "protected"
+# 	return None
+
+def detect_function(line):
+	reg = re.search('.*[(].*[)].*', line)
+	if reg:		
+		return True
+	return False
+
+def detect_variables(line):
+	if ";" in line:
+		return True
+	return False
+
+def extract_variable(line):
+	line = " ".join(line.split())
+	variable = {
+					"qualifiers": None, "dataType": None, 
+					"label": None, "original": line
+				}
+	keyQual = ["const"]
+	nameV = None
+	dataTypeV = None
+	qualifiersV = []
+
+	if line[:-1] == "void":
+		variable["dataType"] = "void"
+		return variable
+
+	components = line.split(" ")
+	for elem in components:		
+		if elem in keyQual:
+			qualifiersV.append(elem)
+		elif ";" in elem:
+			nameV = elem[:-1]
+		else:
+			dataTypeV = elem
+	qualifiersV = " ".join(qualifiersV)
+
+	variable["qualifiers"] = qualifiersV
+	variable["label"] = nameV
+	variable["dataType"] = dataTypeV
+	return variable
+
+def extract_function(line):
+	nonQual = ["virtual"]
+	functions = {
+					"returnType":None, "label": None, "parameters": None,
+					"qualifiers": None, "signature": None, "original": line
+				}
+	originalF = line
+	line = " ".join(line.split())
+	labelF = None
+	returnF = []
+	qualifiersF = []
+	parametersF = []
+	signatureF = None
+	for word in line.split(" "):
+		if "(" in (word):
+			labelF = word.split("(")[0]
+			break
+
+	components = line.split(labelF)
+	for elem in components:		
+		if "(" not in elem and ")" not in elem:
+			for e in elem.strip().split(" "):		
+				if e not in nonQual:
+					returnF.append(e)
+	returnF = " ".join(returnF)
+
+	parameters = re.match(".*?[(].*?[)].*?", line)
+	parameters = parameters.group().split("(")[1][:-1]
+	parameters = parameters.split(",")
+	for variable in parameters:
+		parametersF.append(extract_variable(variable+";"))
+	
+	qualifiersF = re.match(".*?[(].*?[)].*?", line)
+	qualifiersF = qualifiersF.group()
+	qualifiersF = line.split(qualifiersF)
+	qualifiersF = " ".join(qualifiersF).strip()[:-1]
+
+	signatureF = re.match(".*?[(].*?[)].*?", line)
+	signatureF = signatureF.group().split("(")[1][:-1]
+	signatureF = labelF+"("+signatureF+")"
+
+	functions["returnType"] = returnF
+	functions["label"] = labelF
+	functions["parameters"] = parametersF
+	functions["qualifiers"] = qualifiersF
+	functions["signature"] = signatureF
+	return functions
+
+def convert_class(blob, i, namespace, sType):
+	twisform = {"namespace": namespace, "type": sType, "functions": [], "variables": []}
+	for l, line in enumerate(blob.split('\n')):
+		if l < i:
+			continue
+		elif detect_forward_decleration(line):
+			continue		
+		elif detect_begClass(line):
+			classLabel = line.split(' ')[1]
+			twisform[classLabel] = convert_class(blob, l + 2, namespace+classLabel+"::", "class")			
+			i = int(twisform[classLabel]["ln"])
+		elif detect_endClass(line):
+			twisform["ln"] = l + 2
+			return twisform		
+		elif detect_function(line):
+			twisform["functions"].append(extract_function(line))
+		elif detect_variables(line):
+			twisform["variables"].append(extract_variable(line))
+	twisform["ln"] = l + 2
+	return twisform
+
+def extract_lexor(hdr_file):
+	hpp = open(hdr_file, "r")
+	blob = hpp.read()
+	
+	twisform = {"namespace":"", "type":"twisform", "functions": [], "variables": []}
+	ln = 0;
+	for i, line in enumerate(blob.split('\n')):	
+		if i < ln:
+			continue
+		elif i < 10:
+			continue
+		elif detect_forward_decleration(line):
+			continue		
+		elif detect_begClass(line):
+			classLabel = line.split(' ')[1]
+			twisform[classLabel] = convert_class(blob, i + 2, classLabel+"::", "class")
+			ln = int(twisform[classLabel]["ln"])
+		elif detect_function(line):
+			twisform["functions"].append(extract_function(line))
+		elif detect_variables(line):
+			twisform["variables"].append(extract_variable(line))
+	return twisform
+
+	hpp.close()
+
+def generate_default_value(dataType):
+	numeric = ["int", "double", "float", "short", "long"]	
+	if dataType == "std::string":
+		return "\"default\""
+	elif dataType in numeric or (any(tpe in dataType for tpe in numeric)): 
+		return 0
+	elif "char" in dataType:
+		return '*'
+	elif "bool" in dataType:
+		return "false"
+
+def generate_void_constructor(func, variables):
+	instantiation = []
+	comma = ","
+	for var in variables:
+		if var == variables[-1]:
+			comma = ""
+		instantiation.append(" {0}({1}){2}".format(var["label"], 
+										generate_default_value(var["dataType"]), comma))
+	instantiation.append("\n{\n\treturn;\n}\n\n")
+	return instantiation
+
+def generate_assign_constructor(func, variables):
+	instantiation = []
+	comma = ","	
+	vr_index = -1	
+	for var in variables:
+		value = None
+		if var == variables[-1]:
+			comma = ""
+		for vr in func["parameters"]:
+			if vr["label"] == var["label"].replace("_", ""):
+				value = vr["label"]					
+		if value == None:	
+			value = generate_default_value(var["dataType"])		
+		
+		instantiation.append(" {0}({1}){2}".format(var["label"], value, comma))
+	instantiation.append("\n{\n\treturn;\n}\n\n")
+	return instantiation
+
+def generate_copy_constructor(func, variables):
+	instantiation = []
+	for var in variables:		
+		if var == variables[0]:
+			comma = ""
+		else:
+			comma = ","
+		if "const" in var["qualifiers"]:
+			instantiation.append("{1} {0}({2}.{0})".format(var["label"], comma, func["parameters"][0]["label"]))
+	instantiation.append("\n{\n\t*this = rhs;\n\treturn;\n}\n\n")
+	return ["".join(instantiation)]
+
+def generate_constructor(namespace, func, variables):
+	instantiation = []	
+	instantiation.append(namespace + func['signature'])
+	if variables:
+		instantiation.append(":")
+	if func["parameters"][0]["dataType"] == "void":
+		instantiation += generate_void_constructor(func, variables)
+	elif func["label"] in func["parameters"][0]["dataType"]:
+		instantiation += generate_copy_constructor(func, variables)
+	elif len(func["parameters"]) > 1:
+		instantiation += generate_assign_constructor(func, variables)
+	instantiation = " ".join(instantiation) + "\n"
+	return instantiation
+
+def generate_destructor(namespace, func, variables):	
+	instantiation = []	
+	instantiation.append(namespace + func['signature'])
+	instantiation.append("\n{\n\treturn;\n}\n\n")
+	return instantiation
+
+def generate_getters(func):
+	return ["\treturn this->{0};\n".format(func["label"][3:])]
+
+def generate_setters(func):
+	cpp = []
+	cpp.append("\tthis->{0};\n".format(func["label"][3:]))
+	cpp.append("\treturn;\n")
+	return cpp
+
+def generate_equalOperator(func, variables):
+	cpp = []
+	paraLabel = func["parameters"][0]["label"]
+	cpp.append("\tif (this != &{0})\n".format(paraLabel))
+	cpp.append("\t{\n")
+	for var in variables:
+		if "const" not in var["qualifiers"]:
+			cpp.append("\t\tthis->set{0} = {1}.get{0}();\n".format(var["label"], paraLabel))
+	cpp.append("\t}\n")
+	cpp.append("\treturn *this;\n")
+	return cpp
+
+def generate_ostreamOperator(func, variables):
+	cpp = []	
+	cpp.append("\tstd::cout << \"this is a default message\\n\";\n")
+	cpp.append("\treturn\n")
+	return cpp
+
+def generate_func_code(func, variables):
+	cpp = []
+	if func['label'][:3] == "get":
+		return generate_getters(func)
+	elif func['label'][:3] == "set":
+		return generate_setters(func)
+	elif func["label"] == "operator=":
+			return generate_equalOperator(func, variables)
+	elif func["label"] == "operator<<" and "std::ostream" in func["returnType"]:
+			return generate_ostreamOperator(func, variables)
+	else:
+		return ["\treturn;\n"]
+
+def generate_functions(namespace, classLabel, funcform, variables):
+	cpp = []
+	for func in funcform:
+		if func["label"] == classLabel:
+			cpp += generate_constructor(namespace, func, variables)
+		elif func["label"] == "~"+classLabel:
+			cpp += generate_destructor(namespace, func, variables)		
+		else:
+			instantiation = []
+			if func['returnType'] != "":
+				instantiation.append(func['returnType'])
+			instantiation.append(namespace + func['signature'])
+			instantiation.append(func['qualifiers'])
+			instantiation = " ".join(instantiation) + "\n"
+			
+			cpp.append(instantiation)
+			cpp.append("{\n")
+			cpp += generate_func_code(func, variables)
+			cpp.append("}\n\n")
+	return cpp
+
+	
+
+
+def generate_class(classform, classLabel):
+	cpp = []
+	std = ["namespace", "type", "functions", "variables", "ln"]
+	for key in classform.keys():
+		if key == "functions":
+			cpp += generate_functions(classform["namespace"], classLabel,
+									classform["functions"], classform["variables"])
+		if key not in std:
+			cpp += generate_class(classform[key], key)
+	return cpp
+
+
+
+def generate_cpp(twisform):
+	cpp = []
+	std = ["namespace", "type", "functions", "variables"]
+	for key in twisform.keys():		
+		if key not in std:
+			cpp += generate_class(twisform[key], key)
+
+	cpp += generate_functions(twisform["namespace"], "", twisform["functions"], twisform["variables"])
+	return cpp
+
+
 wr = []
 wr.append(header)
 
 wr.append("#include <iostream>\n\n")
+wr.append("#include \"{0}\"\n\n".format(hdr))
 
-wr.append("#include \"{0}\"\n".format(hdr))
 
-hpp = open(hdr, "r")
+twisform = extract_lexor(hdr)
 
-blob = hpp.read()
-
-twisform = {}
-
-# for i, line in enumerate(blob.split('\n')):
-# 	if i < 10:
-# 		continue
-# 	print i, line
-
-# hpp.close()
-
+wr += generate_cpp(twisform)
 
 
 f = open(src, "w")

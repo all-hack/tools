@@ -31,10 +31,11 @@ header = """\
 wr = []
 wr.append(header)
 
-wr.append("#include <iostream>\n\n")
-
 wr.append("#ifndef {0}_H\n".format(nclass.upper()))
 wr.append("# define {0}_H\n\n".format(nclass.upper()))
+
+wr.append("#include <iostream>\n\n")
+
 wr.append("class {0}\n".format(nclass))
 wr.append("{\n")
 wr.append("private:\n\n".format(nclass))
