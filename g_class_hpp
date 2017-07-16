@@ -15,8 +15,8 @@ scope convention:
 	protected: 		__var
 	private:		_var
 	public:			var
-	static:			s-
-	const:			c-
+	static:			s__
+	const:			c__
 
 syntax:
 	Type[Label]
@@ -29,10 +29,10 @@ example with multiple data types:
 	$g_class_hpp Human int{0}arms, legs{1} std::string{0}species{1}
 
 example with multiple scopes:
-	$g_class_hpp Human int{0}__years, _nbBreaths, s-popCount{1}
+	$g_class_hpp Human int{0}__years, _nbBreaths, s__popCount{1}
 
 example with inheritance and multiple data types in multiple scopes:
-	$g_class_hpp Human{0}Cadet{1} std::string{0}_name, _login{1} double{0}time{1} int{0}__s-cadetCount, _sc-typeNumber{1}
+	$g_class_hpp Human{0}Cadet{1} std::string{0}_name, _login{1} double{0}time{1} int{0}__s__cadetCount, _sc__typeNumber{1}
 """.format(lDelim, rDelim)
 
 
@@ -47,20 +47,24 @@ def extract_variable(dataType, arg):
 	qualifiersV = []
 	scopeV = "private"
 	attributes = arg.split(",")
-	for elem in attributes:
-		qualCheck = elem.split("-")
+	for elem in attributes:		
+		qualCheck = []
+		if "__" == elem[:2]:
+			scopeV = "protected"
+			elem = elem[2:]
+		elif "_" == elem[:1]:
+			elem = elem[1:]
+			scopeV = "private"
+		else:			
+			scopeV = "public"
+		qualCheck = elem.split("__")
 		if len(qualCheck) > 1:
 			if len(qualCheck[0]) < 5:
 				if "s" in qualCheck[0]:
 					qualifiersV.append("static")
 				if "c" in qualCheck[0]:
 					qualifiersV.append("const")
-		if "__" == elem[:2]:
-			scopeV = "protected"
-		elif "_" == elem[:1]:
-			scopeV = "private"
-		else:
-			scopeV = "public"
+
 	qualifiersV = " ".join(qualifiersV)
 	variable["qualifiers"] = qualifiersV
 	variable["scope"] = scopeV
@@ -93,8 +97,8 @@ def argv_extract_attributes(argv):
 		print usage
 		exit()
 	elif lDelim in argv[1]:
-		lexor["classLabel"] = argv[1].split(lDelim)[0]
-		lexor["parentLabel"] = argv[1].split(lDelim)[1][:-1]
+		lexor["classLabel"] = argv[1].split(lDelim)[1][:-1]
+		lexor["parentLabel"] = argv[1].split(lDelim)[0]
 	else:
 		lexor["classLabel"] = argv[1]
 
@@ -171,6 +175,8 @@ wr.append("# define {0}_H\n\n".format(nclass.upper()))
 wr.append("#include <iostream>\n")
 if any(tpe["dataType"] == "std::string"  for tpe in att["variables"]):
 	wr.append("#include <string>\n\n")
+if att["parentLabel"]:
+	wr.append("#include \"{0}.hpp\"\n\n".format(att["parentLabel"]))
 
 wr.append("\nclass {0}".format(nclass))
 if att["parentLabel"] != None:
@@ -185,7 +191,7 @@ wr.append("\npublic:\n")
 wr += map(generate_variable, public_scope)
 
 wr.append("\n\t{0}(void);\n".format(nclass))
-wr.append("\t{0}(enter parameters here);\n".format(nclass))
+# wr.append("\t{0}(enter parameters here);\n".format(nclass))
 wr.append("\t{0}(const {0}& rhs);\n".format(nclass))
 wr.append("\t~{0}(void);\n\n".format(nclass))
 wr.append("\t{0}&\toperator=(const {0}& rhs);\n\n".format(nclass))
