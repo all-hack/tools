@@ -1,12 +1,142 @@
 #!/usr/bin/env python
 import sys
 import datetime
+import pprint
+import re
+pp = pprint.PrettyPrinter(indent=4)
 
+lDelim = '{'
+rDelim = '}'
+usage_txt = """\
+usage: first parameter is class name, followed by class attributes.
+inheritance is supported and the parameters should be formated using the syntax below.
+
+scope convention: 
+	protected: 		__var
+	private:		_var
+	public:			var
+	static:			s-
+	const:			c-
+
+syntax:
+	Type[Label]
+		int{0}_age{1}		
+
+example with no attributes:
+	$g_class_hpp Human
+
+example with multiple data types:
+	$g_class_hpp Human int{0}arms, legs{1} std::string{0}species{1}
+
+example with multiple scopes:
+	$g_class_hpp Human int{0}__years, _nbBreaths, s-popCount{1}
+
+example with inheritance and multiple data types in multiple scopes:
+	$g_class_hpp Human{0}Cadet{1} std::string{0}_name, _login{1} double{0}time{1} int{0}__s-cadetCount, _sc-typeNumber{1}
+""".format(lDelim, rDelim)
+
+
+
+def extract_variable(dataType, arg):
+	variable = {
+					"qualifiers": None, "dataType": dataType, 
+					"label": None, "scope": "private"
+				}
+	keyQual = ["const", "static"]
+	nameV = None	
+	qualifiersV = []
+	scopeV = "private"
+	attributes = arg.split(",")
+	for elem in attributes:
+		qualCheck = elem.split("-")
+		if len(qualCheck) > 1:
+			if len(qualCheck[0]) < 5:
+				if "s" in qualCheck[0]:
+					qualifiersV.append("static")
+				if "c" in qualCheck[0]:
+					qualifiersV.append("const")
+		if "__" == elem[:2]:
+			scopeV = "protected"
+		elif "_" == elem[:1]:
+			scopeV = "private"
+		else:
+			scopeV = "public"
+	qualifiersV = " ".join(qualifiersV)
+	variable["qualifiers"] = qualifiersV
+	variable["scope"] = scopeV
+	variable["label"] = arg	
+	return variable
+
+
+
+def extract_args(arg):
+	variables = []
+	if lDelim in arg:
+		dataType = arg.split(lDelim)[0]
+		var_list = arg.split(lDelim)[1]
+		var_list = var_list.split(",")
+		for var in var_list:
+			if var == '':
+				continue
+			var = var.strip()
+			variables.append(extract_variable(dataType.strip(), var))
+	else:
+		print 1, usage_txt
+		exit()
+	return variables
+	
+
+def argv_extract_attributes(argv):
+	lexor = {"classLabel": None, "parentLabel": None, "variables": []}
+	if (lDelim in argv[1] and rDelim not in argv[1]) \
+	or (lDelim not in argv[1] and rDelim in argv[1]):
+		print usage
+		exit()
+	elif lDelim in argv[1]:
+		lexor["classLabel"] = argv[1].split(lDelim)[0]
+		lexor["parentLabel"] = argv[1].split(lDelim)[1][:-1]
+	else:
+		lexor["classLabel"] = argv[1]
+
+	if len(argv) == 3:
+		args = argv[2].split(rDelim)
+		for arg in args:			
+			if arg == "":
+				continue			
+			lexor["variables"] += (extract_args(arg))
+	return lexor
+
+
+def generate_variable(var):	
+	return "\t{0}{3}{2}\t\t{1};\n".format(var["qualifiers"], var["label"], var["dataType"], "" if var["qualifiers"] == "" else " ")
+
+def generate_getters(var):		
+	if "static" in var["qualifiers"]:
+		return ""
+	return "\t{0}\t\t{1}(void) const;\n".format(var["dataType"], "get"+var["label"])
+
+def generate_setters(var):
+	if "const" in var["qualifiers"] or "static" in var["qualifiers"]:
+		return ""
+	return "\tvoid\t\t{0}(const {1});\n".format("set"+var["label"], var["dataType"]+" "+var["label"][1:])
+
+#######
+#
+#	program starts
+#
+#
+#######
 
 if len(sys.argv) > 1:
-	nclass = sys.argv[1]
+	if "-help" in sys.argv[1] or "-h" in sys.argv[1]:
+		print usage_txt
+		exit()
+	att = argv_extract_attributes(sys.argv)		
 else:
-	nclass = ""
+	print usage_txt
+	exit()	
+
+nclass = att["classLabel"]
 
 hdr = nclass+".hpp"
 src = nclass+".cpp"
@@ -28,27 +158,45 @@ header = """\
 
 """.format(comment_source_nam, dateandtimeandstuffofthing)
 
+private_scope = list(filter(lambda var: var["scope"] == "private", att["variables"]))
+protected_scope = list(filter(lambda var: var["scope"] == "protected", att["variables"]))
+public_scope = list(filter(lambda var: var["scope"] == "public", att["variables"]))
+
 wr = []
 wr.append(header)
 
 wr.append("#ifndef {0}_H\n".format(nclass.upper()))
 wr.append("# define {0}_H\n\n".format(nclass.upper()))
 
-wr.append("#include <iostream>\n\n")
+wr.append("#include <iostream>\n")
+if any(tpe["dataType"] == "std::string"  for tpe in att["variables"]):
+	wr.append("#include <string>\n\n")
 
-wr.append("class {0}\n".format(nclass))
-wr.append("{\n")
-wr.append("private:\n\n".format(nclass))
-wr.append("public:\n")
-wr.append("\t{0}(void);\n".format(nclass))
-wr.append("\t{0}(void);\n".format(nclass))
+wr.append("\nclass {0}".format(nclass))
+if att["parentLabel"] != None:
+	wr.append(" : public {0}".format(att["parentLabel"]))
+wr.append("\n{\n")
+
+wr.append("private:\n".format(nclass))
+wr += map(generate_variable, private_scope)
+wr.append("\nprotected:\n".format(nclass))
+wr += map(generate_variable, protected_scope)
+wr.append("\npublic:\n")
+wr += map(generate_variable, public_scope)
+
+wr.append("\n\t{0}(void);\n".format(nclass))
+wr.append("\t{0}(enter parameters here);\n".format(nclass))
 wr.append("\t{0}(const {0}& rhs);\n".format(nclass))
 wr.append("\t~{0}(void);\n\n".format(nclass))
 wr.append("\t{0}&\toperator=(const {0}& rhs);\n\n".format(nclass))
 
+wr.append("\t// generated getters\n")
+wr += map(generate_getters, private_scope)
+wr.append("\n\t// generated setters\n")
+wr += map(generate_setters, private_scope)
+
 wr.append("};\n")
 wr.append("#endif\n")
-
 
 f = open(hdr, "w")
 

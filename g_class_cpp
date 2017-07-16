@@ -135,13 +135,18 @@ def detect_endClass(line):
 # 	return None
 
 def detect_function(line):
-	reg = re.search('.*[(].*[)].*', line)
+	reg = re.search('.*[(].*[)].*', line)	
+	# print line
 	if reg:		
-		return True
+		reg = re.search(".*[=].*[0].*", reg.group())
+		if reg:			
+			return False
+		else:
+			return True
 	return False
 
 def detect_variables(line):
-	if ";" in line:
+	if ";" in line and "=" not in line and "class" not in line and "static" not in line:
 		return True
 	return False
 
@@ -206,7 +211,7 @@ def extract_function(line):
 	parameters = parameters.split(",")
 	for variable in parameters:
 		parametersF.append(extract_variable(variable+";"))
-	
+
 	qualifiersF = re.match(".*?[(].*?[)].*?", line)
 	qualifiersF = qualifiersF.group()
 	qualifiersF = line.split(qualifiersF)
@@ -311,8 +316,13 @@ def generate_assign_constructor(func, variables):
 
 def generate_copy_constructor(func, variables):
 	instantiation = []
+	const_var = []
+
 	for var in variables:		
-		if var == variables[0]:
+		if "const" in var["qualifiers"]:
+			const_var.append(var);
+	for var in const_var:
+		if var == const_var[0]:
 			comma = ""
 		else:
 			comma = ","
@@ -346,7 +356,8 @@ def generate_getters(func):
 
 def generate_setters(func):
 	cpp = []
-	cpp.append("\tthis->{0};\n".format(func["label"][3:]))
+	paraLabel = func["parameters"][0]["label"]
+	cpp.append("\tthis->{0} = {1};\n".format(func["label"][3:], paraLabel))
 	cpp.append("\treturn;\n")
 	return cpp
 
@@ -357,7 +368,7 @@ def generate_equalOperator(func, variables):
 	cpp.append("\t{\n")
 	for var in variables:
 		if "const" not in var["qualifiers"]:
-			cpp.append("\t\tthis->set{0} = {1}.get{0}();\n".format(var["label"], paraLabel))
+			cpp.append("\t\tthis->set{0}({1}.get{0}());\n".format(var["label"], paraLabel))
 	cpp.append("\t}\n")
 	cpp.append("\treturn *this;\n")
 	return cpp
@@ -435,11 +446,8 @@ wr.append(header)
 wr.append("#include <iostream>\n\n")
 wr.append("#include \"{0}\"\n\n".format(hdr))
 
-
 twisform = extract_lexor(hdr)
-
 wr += generate_cpp(twisform)
-
 
 f = open(src, "w")
 
